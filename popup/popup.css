@@ -1,0 +1,230 @@
+:root {
+  --color-primary: #218D8D;
+  --color-background: #FCFCF9;
+  --color-text: #133C3B;
+  --color-accent: #A84B2F;
+  --color-border: #E0E0E0;
+  --color-success: #4CAF50;
+  --color-error: #F44336;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 350px;
+  min-height: 500px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: var(--color-background);
+  color: var(--color-text);
+}
+
+.container {
+  padding: 16px;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--color-primary);
+}
+
+header h1 {
+  font-size: 24px;
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.icon-btn:hover {
+  background: var(--color-border);
+}
+
+.status-section {
+  margin-bottom: 20px;
+}
+
+.status {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: var(--color-text);
+}
+
+.progress-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--color-border);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-bar::after {
+  content: '';
+  display: block;
+  height: 100%;
+  width: var(--progress-width, 0%);
+  background: var(--color-primary);
+  transition: width 0.3s ease;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.progress-text {
+  font-size: 12px;
+  color: var(--color-text);
+  min-width: 40px;
+  text-align: right;
+}
+
+.preview-area {
+  margin: 16px 0;
+  text-align: center;
+  border: 2px dashed var(--color-border);
+  border-radius: 8px;
+  padding: 12px;
+  background: white;
+}
+
+.preview-area img {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 4px;
+}
+
+.controls {
+  margin-bottom: 16px;
+}
+
+.btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 8px;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #1a6f6f;
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+
+.btn-secondary:hover {
+  background: #d0d0d0;
+}
+
+.settings-panel {
+  margin-top: 16px;
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+
+.settings-panel h3 {
+  font-size: 16px;
+  margin-bottom: 16px;
+  color: var(--color-primary);
+}
+
+.setting-item {
+  margin-bottom: 16px;
+}
+
+.setting-item label {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 6px;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.setting-item input[type="range"] {
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.setting-item input[type="number"],
+.setting-item select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.setting-item span {
+  font-size: 12px;
+  color: var(--color-text);
+  float: right;
+}
+
+.actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.actions .btn {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.status.capturing {
+  color: var(--color-primary);
+}
+
+.status.processing {
+  color: var(--color-accent);
+}
+
+.status.complete {
+  color: var(--color-success);
+}
+
+.status.error {
+  color: var(--color-error);
+}
+
