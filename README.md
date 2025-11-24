@@ -8,12 +8,23 @@
 
 Banana Gif Recorder is a tiny, banana-yellow Chrome extension that captures entire web pages in smooth, shareable GIFs. Perfect for creating portfolio showcases, sharing UI designs, and demonstrating full-page interactions—all processed locally on your machine.
 
-![Banana Gif Recorder screenshot](images/main_page.png)
-
 ## Screenshots
-![Recording in progress](images/capturing.png)
-![Rendering frames](images/rendering.png)
-![Downloading the GIF](images/download_gif.png)
+
+### Main Interface
+![Main page - Start recording interface](images/main_page.png)
+*The clean, banana-themed popup interface where you start your recording session.*
+
+### Capturing Process
+![Capturing - Recording in progress](images/capturing.png)
+*Watch as the extension smoothly scrolls through your page, capturing every section in real-time.*
+
+### Rendering Frames
+![Rendering - Processing frames into GIF](images/rendering.png)
+*The extension processes all captured frames and stitches them together into a smooth GIF animation.*
+
+### Download Ready
+![Download - GIF ready to save](images/download_gif.png)
+*Your final GIF is ready! Download and share your smooth, full-page capture anywhere.*
 
 ## Features
 - **Full-Page Capture**: Automatically scrolls and captures entire web pages in one smooth recording.
