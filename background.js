@@ -92,11 +92,28 @@ async function startCaptureFlow(tabId, settings) {
       targetTabId: tabId
     });
 
+    // 2.5 Get Viewport Dimensions
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      func: () => ({
+        width: window.innerWidth,
+        height: window.innerHeight,
+        dpr: window.devicePixelRatio
+      })
+    });
+
+    const viewport = result.result;
+
     // 3. Start Recording in Offscreen
     await chrome.runtime.sendMessage({
       type: 'START_RECORDING',
       streamId: streamId,
-      settings: settings
+      settings: {
+        ...settings,
+        viewportWidth: viewport.width,
+        viewportHeight: viewport.height,
+        devicePixelRatio: viewport.dpr
+      }
     });
 
     // 4. Start Scrolling in Content

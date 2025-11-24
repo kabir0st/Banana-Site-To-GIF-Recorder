@@ -3,7 +3,8 @@
 let recorder = null;
 let isRecording = false;
 let capturedFrames = [];
-const FPS = 15; // Reduced to 15 to save memory and processing time
+let canvas = null; // Global canvas reference
+const FPS = 60; // Increased to 60 for smoother playback
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'START_RECORDING') {
@@ -38,24 +39,46 @@ async function startRecording(streamId, settings) {
     video.srcObject = media;
     await video.play();
 
-    const canvas = document.createElement('canvas');
+    canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-    // Set dimensions based on settings or video
-    // Limit max width to 1200 to prevent memory crashes
-    let width = settings.width || video.videoWidth;
-    if (width > 1200) width = 1200;
+    // Set dimensions based on viewport settings
+    // Limit max width to 800 to reduce file size while keeping 60 FPS
+    const MAX_WIDTH = 800;
 
-    const height = (video.videoHeight / video.videoWidth) * width;
+    // The actual viewport dimensions in CSS pixels
+    const viewportWidth = settings.viewportWidth || settings.width || video.videoWidth;
+    const viewportHeight = settings.viewportHeight || (video.videoHeight / video.videoWidth) * viewportWidth;
 
-    canvas.width = width;
-    canvas.height = height;
+    // Calculate aspect ratio
+    const aspectRatio = viewportWidth / viewportHeight;
+
+    // Determine final output dimensions (downscaled if necessary)
+    let outputWidth = viewportWidth;
+    let outputHeight = viewportHeight;
+
+    if (outputWidth > MAX_WIDTH) {
+        outputWidth = MAX_WIDTH;
+        outputHeight = outputWidth / aspectRatio;
+    }
+
+    // Ensure even numbers for dimensions (some encoders prefer this)
+    outputWidth = Math.floor(outputWidth);
+    outputHeight = Math.floor(outputHeight);
+
+    canvas.width = outputWidth;
+    canvas.height = outputHeight;
 
     capturedFrames = [];
     isRecording = true;
 
     // Capture loop
     const interval = 1000 / FPS;
+
+    // Calculate source dimensions (accounting for devicePixelRatio)
+    const dpr = settings.devicePixelRatio || 1;
+    const sourceWidth = viewportWidth * dpr;
+    const sourceHeight = viewportHeight * dpr;
 
     const captureLoop = () => {
         if (!isRecording) {
@@ -64,8 +87,11 @@ async function startRecording(streamId, settings) {
             return;
         }
 
-        ctx.drawImage(video, 0, 0, width, height);
-        const frameData = ctx.getImageData(0, 0, width, height);
+        // Draw cropped video frame with scaling
+        // source x, y, w, h -> dest x, y, w, h
+        // We crop the source to the viewport * dpr, and draw it to the output canvas (downscaled)
+        ctx.drawImage(video, 0, 0, sourceWidth, sourceHeight, 0, 0, outputWidth, outputHeight);
+        const frameData = ctx.getImageData(0, 0, outputWidth, outputHeight);
         capturedFrames.push(frameData);
 
         setTimeout(captureLoop, interval);
@@ -85,8 +111,9 @@ async function stopRecordingAndGenerateGif(settings) {
     try {
         const gif = new GIF({
             workers: 2,
-            quality: 5, // Hardcoded quality
-            width: settings.width,
+            quality: 25, // Reduced quality (higher number = worse quality) to save size
+            width: canvas.width, // Use the actual canvas width (downscaled)
+            height: canvas.height,
             workerScript: 'lib/gif.worker.js',
             dither: false
         });
