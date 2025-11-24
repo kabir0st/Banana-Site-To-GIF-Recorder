@@ -4,7 +4,8 @@ let recorder = null;
 let isRecording = false;
 let capturedFrames = [];
 let canvas = null; // Global canvas reference
-const FPS = 60; // Increased to 60 for smoother playback
+let recordingFPS = 30; // Default FPS, updated from settings
+let gifQuality = 10; // Global quality reference
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'START_RECORDING') {
@@ -23,6 +24,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function startRecording(streamId, settings) {
     if (isRecording) return;
+
+    recordingFPS = settings.fps || 30;
 
     const dpr = settings.devicePixelRatio || 1;
     const targetWidth = (settings.viewportWidth || 1920) * dpr;
@@ -51,8 +54,21 @@ async function startRecording(streamId, settings) {
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
     // Set dimensions based on viewport settings
-    // Limit max width to 800 to reduce file size while keeping 60 FPS
-    const MAX_WIDTH = 800;
+    // Determine MAX_WIDTH and quality based on preset
+    let MAX_WIDTH = 1200; // Default Normal
+    gifQuality = 10; // Default Normal
+
+    if (settings.qualityPreset === 'high') {
+        MAX_WIDTH = 1920;
+        gifQuality = 1;
+    } else if (settings.qualityPreset === 'low') {
+        MAX_WIDTH = 800;
+        gifQuality = 25;
+    } else {
+        // Normal
+        MAX_WIDTH = 1200;
+        gifQuality = 10;
+    }
 
     // The actual viewport dimensions in CSS pixels
     const viewportWidth = settings.viewportWidth || settings.width || video.videoWidth;
@@ -81,7 +97,7 @@ async function startRecording(streamId, settings) {
     isRecording = true;
 
     // Capture loop
-    const interval = 1000 / FPS;
+    const interval = 1000 / recordingFPS;
 
     // Calculate source dimensions (accounting for devicePixelRatio)
     // dpr is already defined at the top of the function
@@ -124,7 +140,7 @@ async function stopRecordingAndGenerateGif(settings) {
     try {
         const gif = new GIF({
             workers: 2,
-            quality: 25, // Reduced quality (higher number = worse quality) to save size
+            quality: gifQuality, // Use calculated quality
             width: canvas.width, // Use the actual canvas width (downscaled)
             height: canvas.height,
             workerScript: 'lib/gif.worker.js',
@@ -162,9 +178,16 @@ async function stopRecordingAndGenerateGif(settings) {
             });
         });
 
-        capturedFrames.forEach((frameData) => {
-            gif.addFrame(frameData, { delay: 1000 / FPS });
-        });
+        // Add frames in chunks to avoid blocking the main thread
+        const chunkSize = 20;
+        for (let i = 0; i < capturedFrames.length; i += chunkSize) {
+            const chunk = capturedFrames.slice(i, i + chunkSize);
+            chunk.forEach(frame => {
+                gif.addFrame(frame, { delay: 1000 / recordingFPS });
+            });
+            // Yield to event loop
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
 
         gif.render();
 

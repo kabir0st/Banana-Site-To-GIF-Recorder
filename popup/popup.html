@@ -14,22 +14,37 @@
     </div>
 
     <!-- Phase 1: Start / Recording -->
-    <div id="start-view" class="view">
+    <div id="startView" class="view">
       <img class="illustration" src="../icons/icon128.png" alt="Banana">
       
       <div id="status-area">
         <p id="status" class="status-text">Ready to peel?</p>
         
-        <div id="progress-container" class="progress-container hidden">
-          <div class="progress-bar">
-            <div id="progressBar" class="progress-fill"></div>
+        <div class="progress-container hidden" id="progressContainer">
+          <!-- Progress will be shown in the button now -->
+        </div>
+      </div>
+
+      <div class="settings-area">
+        <div class="setting-item">
+          <label class="setting-label">FPS</label>
+          <div class="button-group" id="fpsGroup">
+            <button class="group-btn active" data-value="24">24</button>
+            <button class="group-btn" data-value="60">60</button>
           </div>
-          <span id="progressText" class="progress-text">0%</span>
+        </div>
+        <div class="setting-item">
+          <label class="setting-label">Quality</label>
+          <div class="button-group" id="qualityGroup">
+            <button class="group-btn" data-value="low">Low</button>
+            <button class="group-btn active" data-value="normal">Medium</button>
+            <button class="group-btn" data-value="high">High</button>
+          </div>
         </div>
       </div>
 
       <button id="startBtn" class="btn btn-primary">
-        <span>📹</span> Start Recording
+        Start Recording
       </button>
       
       <button id="cancelBtn" class="btn btn-secondary hidden">
@@ -38,7 +53,7 @@
     </div>
 
     <!-- Phase 2: Result -->
-    <div id="result-view" class="view hidden">
+    <div id="resultView" class="view hidden">
       <div class="preview-container">
         <img id="previewGif" src="" alt="Recorded GIF">
       </div>

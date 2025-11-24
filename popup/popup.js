@@ -9,13 +9,13 @@ const STATE = {
 
 // DOM elements
 const elements = {
-  startView: document.getElementById('start-view'),
-  resultView: document.getElementById('result-view'),
+  startView: document.getElementById('startView'),
+  resultView: document.getElementById('resultView'),
 
   status: document.getElementById('status'),
-  progressContainer: document.getElementById('progress-container'),
-  progressBar: document.getElementById('progressBar'),
-  progressText: document.getElementById('progressText'),
+  statusText: document.getElementById('statusText'),
+  progressContainer: document.getElementById('progressContainer'),
+  progressPercent: document.getElementById('progressPercent'),
 
   startBtn: document.getElementById('startBtn'),
   cancelBtn: document.getElementById('cancelBtn'),
@@ -23,7 +23,13 @@ const elements = {
   previewGif: document.getElementById('previewGif'),
   fileInfo: document.getElementById('fileInfo'),
   downloadBtn: document.getElementById('downloadBtn'),
-  resetBtn: document.getElementById('resetBtn')
+  downloadBtn: document.getElementById('downloadBtn'),
+  resetBtn: document.getElementById('resetBtn'),
+
+  fpsGroup: document.getElementById('fpsGroup'),
+  qualityGroup: document.getElementById('qualityGroup'),
+
+  illustration: document.querySelector('.illustration')
 };
 
 let currentGifBlob = null;
@@ -40,13 +46,40 @@ function setupEventListeners() {
   elements.startBtn.addEventListener('click', startCapture);
   elements.cancelBtn.addEventListener('click', cancelCapture);
   elements.downloadBtn.addEventListener('click', downloadGif);
+  elements.downloadBtn.addEventListener('click', downloadGif);
   elements.resetBtn.addEventListener('click', reset);
+
+  // Button group listeners
+  document.querySelectorAll('.group-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const group = e.target.closest('.button-group');
+      group.querySelectorAll('.group-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+    });
+  });
 
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === 'STATE_UPDATE') {
       handleStateUpdate(message.state);
+    } else if (message.type === 'SCROLL_ROTATION') {
+      triggerRotation(message.direction);
     }
   });
+}
+
+function triggerRotation(direction) {
+  if (!elements.illustration) return;
+
+  // Remove any existing rotation classes
+  elements.illustration.classList.remove('spinning', 'spinning-reverse');
+
+  // Add appropriate rotation class based on direction
+  const rotationClass = direction === -1 ? 'spinning-reverse' : 'spinning';
+  elements.illustration.classList.add(rotationClass);
+
+  setTimeout(() => {
+    elements.illustration.classList.remove('spinning', 'spinning-reverse');
+  }, 1000);
 }
 
 async function handleStateUpdate(state) {
@@ -87,38 +120,81 @@ async function handleStateUpdate(state) {
 function updateUI(state) {
   const { status, progress, blobUrl, error } = state;
 
-  // Default visibility
-  elements.startView.classList.remove('hidden');
+  // Reset common elements first
+  elements.startView.classList.add('hidden');
   elements.resultView.classList.add('hidden');
-  elements.progressContainer.classList.add('hidden');
-  elements.startBtn.classList.remove('hidden');
   elements.cancelBtn.classList.add('hidden');
 
   switch (status) {
     case STATE.IDLE:
+      elements.startView.classList.remove('hidden');
       elements.status.textContent = 'Ready to peel?';
+      elements.startBtn.disabled = false;
+      elements.startBtn.classList.remove('btn-loading');
+      elements.startBtn.classList.remove('hidden');
+      elements.startBtn.innerHTML = 'Start Recording';
       break;
 
     case STATE.CAPTURING:
+      elements.startView.classList.remove('hidden');
       elements.status.textContent = 'Capturing...';
-      elements.startBtn.classList.add('hidden');
+
+      // Update button state
+      elements.startBtn.disabled = true;
+      elements.startBtn.classList.add('btn-loading');
+      elements.startBtn.classList.remove('hidden');
+      // Only update innerHTML if structure is missing to avoid flicker
+      if (!elements.startBtn.querySelector('.btn-content')) {
+        elements.startBtn.innerHTML = `
+            <div class="btn-content">
+              <span>${Math.round(progress)}%</span>
+            </div>
+          `;
+      } else {
+        // Just update text
+        const span = elements.startBtn.querySelector('span');
+        if (span) span.textContent = `${Math.round(progress)}%`;
+      }
+
       elements.cancelBtn.classList.remove('hidden');
-      elements.progressContainer.classList.remove('hidden');
-      updateProgress(0);
       break;
 
     case STATE.PROCESSING:
-      elements.status.textContent = 'Mashing bananas... (Generating GIF)';
-      elements.startBtn.classList.add('hidden');
-      elements.progressContainer.classList.remove('hidden');
-      updateProgress(progress);
+      elements.startView.classList.remove('hidden');
+      elements.status.textContent = 'Mashing bananas...';
+
+      // Keep button in loading state but update text
+      elements.startBtn.disabled = true;
+      elements.startBtn.classList.add('btn-loading');
+      elements.startBtn.classList.remove('hidden');
+      elements.startBtn.innerHTML = `
+        <div class="btn-content">
+          <span>Mashing...</span>
+        </div>
+      `;
+      break;
+
+    case STATE.COMPLETE:
+      elements.resultView.classList.remove('hidden');
+      // Preview is handled in handleStateUpdate
+      break;
+
+    case STATE.ERROR:
+      elements.startView.classList.remove('hidden');
+      elements.status.textContent = 'Error!';
+      elements.startBtn.disabled = false;
+      elements.startBtn.classList.remove('btn-loading');
+      elements.startBtn.innerHTML = 'Try Again';
       break;
   }
 }
 
 function updateProgress(percent) {
-  elements.progressBar.style.width = `${percent}%`;
-  elements.progressText.textContent = `${Math.round(percent)}%`;
+  // Update button text if in capturing state
+  const span = elements.startBtn.querySelector('span');
+  if (span) {
+    span.textContent = `${Math.round(percent)}%`;
+  }
 }
 
 async function startCapture() {
@@ -129,7 +205,8 @@ async function startCapture() {
     }
 
     const settings = {
-      quality: 5,
+      qualityPreset: elements.qualityGroup.querySelector('.active').dataset.value,
+      fps: parseInt(elements.fpsGroup.querySelector('.active').dataset.value, 10),
       width: null
     };
 
@@ -210,7 +287,12 @@ function reset() {
   chrome.runtime.sendMessage({ type: 'CANCEL_CAPTURE' });
   currentGifBlob = null;
   elements.previewGif.src = '';
-  handleStateUpdate({ status: STATE.IDLE });
+  updateUI({ status: STATE.IDLE });
+
+  // Reset button
+  elements.startBtn.disabled = false;
+  elements.startBtn.classList.remove('btn-loading');
+  elements.startBtn.innerHTML = 'Start Recording';
 }
 
 init();

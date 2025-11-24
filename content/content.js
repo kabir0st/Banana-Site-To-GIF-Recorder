@@ -42,6 +42,22 @@ function startAutoScroll() {
   function nextPage() {
     if (stopped) return;
 
+    // Calculate progress
+    // We scroll down (0 to pages-1) then up (pages-1 to 0)
+    // Total steps approx 2 * pages
+    // Current step calculation is a bit tricky because we just track 'page' and 'direction'
+
+    // Let's estimate:
+    // If direction is 1, we are at step 'page'
+    // If direction is -1, we are at step 'pages + (pages - 1 - page)'
+
+    let currentStep = (direction === 1) ? page : (pages + (pages - 1 - page));
+    const totalSteps = pages * 2;
+    const progress = Math.min(100, Math.round((currentStep / totalSteps) * 100));
+
+    chrome.runtime.sendMessage({ type: 'SCROLL_PROGRESS', progress: progress });
+    chrome.runtime.sendMessage({ type: 'SCROLL_ROTATION', direction: direction });
+
     page += direction;
     smoothScrollTo(page * window.innerHeight);
 

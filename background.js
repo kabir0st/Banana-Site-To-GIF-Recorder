@@ -39,6 +39,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     gifChunks[message.index] = message.chunk;
     return false;
   }
+  else if (message.type === 'SCROLL_PROGRESS') {
+    updateState('CAPTURING', message.progress);
+    return false;
+  }
   else if (message.type === 'GIF_COMPLETE') {
     console.log('Background: All chunks received. Assembling...');
     const fullBlobUrl = gifChunks.join('');
