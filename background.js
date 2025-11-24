@@ -1,241 +1,177 @@
-// Background service worker for ScrollGif extension
+// Background service worker
 
-let captureInProgress = false;
-let captureCancelled = false;
-
-// Default settings
-const DEFAULT_SETTINGS = {
-  scrollDelay: 500,
-  frameDelay: 500,
-  quality: 5,
-  width: 800,
-  overlap: 50
+// State management
+let currentState = {
+  status: 'IDLE', // IDLE, CAPTURING, PROCESSING, COMPLETE, ERROR
+  progress: 0,
+  blobUrl: null,
+  error: null
 };
+
+// Constants
+const OFFSCREEN_PATH = 'offscreen.html';
+
+// Listen for GIF_COMPLETE in the main listener
+let gifChunks = [];
 
 // Message handler
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'START_CAPTURE') {
-    startCapture(message.tabId, message.settings);
+    gifChunks = []; // Reset chunks
+    startCaptureFlow(message.tabId, message.settings);
     sendResponse({ success: true });
-  } else if (message.type === 'CANCEL_CAPTURE') {
-    captureCancelled = true;
+    return false;
+  }
+  else if (message.type === 'CANCEL_CAPTURE') {
+    handleCancel();
     sendResponse({ success: true });
-  } else if (message.type === 'DOWNLOAD_GIF') {
-    downloadGif(message.blobUrl, message.filename);
-    sendResponse({ success: true });
+    return false;
+  }
+  else if (message.type === 'GET_STATUS') {
+    sendResponse(currentState);
+    return false;
+  }
+  else if (message.type === 'GIF_PROGRESS') {
+    updateState('PROCESSING', message.progress);
+    return false;
+  }
+  else if (message.type === 'GIF_DATA_CHUNK') {
+    gifChunks[message.index] = message.chunk;
+    return false;
+  }
+  else if (message.type === 'GIF_COMPLETE') {
+    console.log('Background: All chunks received. Assembling...');
+    const fullBlobUrl = gifChunks.join('');
+    gifChunks = []; // Clear memory
+
+    console.log('Background: Saving to storage...');
+    chrome.storage.local.set({ gifData: fullBlobUrl }).then(() => {
+      console.log('Background: Saved to storage. Updating state.');
+      updateState('COMPLETE', 100, 'STORAGE'); // Signal that data is in storage
+    }).catch(err => {
+      console.error('Background: Storage error:', err);
+      updateState('ERROR', 0, null, 'Storage error: ' + err.message);
+    });
+
+    return false;
+  }
+  else if (message.type === 'ERROR') {
+    console.error('Background: Received error:', message.error);
+    updateState('ERROR', 0, null, message.error);
+    return false;
   }
 
-  return true;
+  return false;
 });
 
-// Start capture process
-async function startCapture(tabId, settings) {
-  if (captureInProgress) {
-    return;
+function updateState(status, progress = 0, blobUrl = null, error = null) {
+  currentState = { status, progress, blobUrl, error };
+  // Don't send the huge blobUrl in the message if it's data
+  const stateToSend = { ...currentState };
+  if (status === 'COMPLETE' && blobUrl === 'STORAGE') {
+    stateToSend.blobUrl = 'STORAGE';
   }
+  safeSendMessage({ type: 'STATE_UPDATE', state: stateToSend });
+}
 
-  captureInProgress = true;
-  captureCancelled = false;
+function handleCancel() {
+  updateState('IDLE');
+}
+
+async function startCaptureFlow(tabId, settings) {
+  if (currentState.status === 'CAPTURING') return;
+
+  updateState('CAPTURING', 0);
 
   try {
-    const tab = await chrome.tabs.get(tabId);
+    // 1. Setup Offscreen Document
+    await setupOffscreenDocument(OFFSCREEN_PATH);
 
-    // Check if tab is valid
-    if (!tab || !tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
-      throw new Error('Cannot capture this page. Please navigate to a regular webpage.');
-    }
+    // 2. Get Tab Stream ID
+    const streamId = await chrome.tabCapture.getMediaStreamId({
+      targetTabId: tabId
+    });
 
-    // Inject content script if not already injected
+    // 3. Start Recording in Offscreen
+    await chrome.runtime.sendMessage({
+      type: 'START_RECORDING',
+      streamId: streamId,
+      settings: settings
+    });
+
+    // 4. Start Scrolling in Content
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tabId },
         files: ['content/content.js']
       });
-    } catch (error) {
-      // Script might already be injected, continue
-      console.log('Content script injection:', error);
-    }
+    } catch (e) { }
 
-    // Wait a bit for script to initialize
-    await sleep(200);
+    await sleep(500);
 
-    // Get page info
-    const pageInfo = await chrome.tabs.sendMessage(tabId, { type: 'GET_PAGE_INFO' });
+    // Send start scroll command
+    await chrome.tabs.sendMessage(tabId, { type: 'START_AUTO_SCROLL' });
 
-    const { height, viewportHeight, viewportWidth } = pageInfo;
-
-    // Update settings for full screen if needed
-    if (!settings.width || settings.width === 800) {
-      settings.width = viewportWidth;
-    }
-    
-    // Use viewport width exactly (no scaling)
-    settings.width = viewportWidth;
-
-    // Freeze page
-    await chrome.tabs.sendMessage(tabId, { type: 'FREEZE_PAGE' });
-
-    // Scroll to top
-    await chrome.tabs.sendMessage(tabId, { type: 'RESET_SCROLL' });
-
-    await sleep(300);
-
-    const frames = [];
-
-    // Configuration from user snippet
-    const pageDelay = 800;    // delay between pages
-    const animDuration = 600; // animation time
-    const totalPages = Math.ceil(height / viewportHeight);
-    const frameDelay = 16.67; // 60 fps capture rate (1000/60)
-
-    // Helper to capture a frame with proper timing
-    const captureFrame = async (delay) => {
-      try {
-        // Small wait to ensure browser has rendered
-        await sleep(10);
-        const dataUrl = await chrome.tabs.captureVisibleTab(
-          tab.windowId,
-          { format: 'png' }
-        );
-        frames.push({ dataUrl, delay });
-      } catch (error) {
-        console.error('Capture error:', error);
-      }
-    };
-
-    // Smooth scroll animation - capture frames during scroll
-    const animateScroll = async (start, end) => {
-      if (captureCancelled) return;
-      
-      const totalFrames = Math.round(animDuration / frameDelay); // ~36 frames for 600ms at 16.67ms (60fps)
-      
-      // Start smooth scroll in content script (non-blocking, uses requestAnimationFrame)
-      const scrollPromise = chrome.tabs.sendMessage(tabId, {
-        type: 'SMOOTH_SCROLL_TO',
-        position: end,
-        duration: animDuration
-      }).catch(() => {});
-      
-      // Capture frames during the scroll animation at regular intervals
-      // This creates smooth video playback
-      for (let i = 0; i <= totalFrames; i++) {
-        if (captureCancelled) return;
-        
-        // Wait for this frame's timing (except first frame)
-        if (i > 0) {
-          await sleep(frameDelay);
+    // Wait for scroll completion
+    const scrollCompletePromise = new Promise((resolve) => {
+      const listener = (msg) => {
+        if (msg.type === 'SCROLL_COMPLETE') {
+          chrome.runtime.onMessage.removeListener(listener);
+          resolve();
         }
-        
-        // Capture frame - the scroll is happening smoothly in background via requestAnimationFrame
-        await captureFrame(frameDelay);
-      }
-      
-      // Wait for scroll to fully complete
-      await scrollPromise;
-      await sleep(20); // Small buffer to ensure final render
-      
-      // Final frame at exact target position
-      await captureFrame(frameDelay);
-    };
-    for (let page = 0; page < totalPages; page++) {
-      if (captureCancelled) break;
+      };
+      chrome.runtime.onMessage.addListener(listener);
+    });
 
-      // Calculate target position (page * viewportHeight)
-      // Ensure we don't scroll past bottom
-      const targetY = Math.min(page * viewportHeight, height - viewportHeight);
-      const startY = (page === 0) ? 0 : Math.min((page - 1) * viewportHeight, height - viewportHeight);
+    await scrollCompletePromise;
 
-      // If it's the first page, we are already at 0, but we might want to capture the initial state?
-      // The loop logic:
-      // Page 0: Start 0, Target 0. (Just wait)
-      // Page 1: Start 0, Target VH.
+    // 5. Stop Recording and Generate GIF
+    if (currentState.status !== 'CAPTURING') return; // Cancelled
 
-      if (page > 0) {
-        const prevY = Math.min((page - 1) * viewportHeight, height - viewportHeight);
-        // Animate from previous page to current page
-        await animateScroll(prevY, targetY);
-      } else {
-        // Initial frame at top
-        await captureFrame(frameDelay);
-      }
+    updateState('PROCESSING', 0);
 
-      // Pause between pages
-      await sleep(pageDelay);
-      // Capture "pause" frame
-      await captureFrame(pageDelay);
+    // Send stop command (returns immediately now)
+    await chrome.runtime.sendMessage({
+      type: 'STOP_RECORDING',
+      settings: settings
+    });
 
-      // Update progress (0-50%)
-      const progress = ((page + 1) / totalPages) * 50;
-      try {
-        chrome.runtime.sendMessage({ type: 'CAPTURE_PROGRESS', progress }).catch(() => { });
-      } catch (e) { }
-    }
-
-    // --- UPWARD SCROLL ---
-    if (!captureCancelled) {
-      for (let page = totalPages - 2; page >= 0; page--) {
-        if (captureCancelled) break;
-
-        const startY = Math.min((page + 1) * viewportHeight, height - viewportHeight);
-        const targetY = Math.min(page * viewportHeight, height - viewportHeight);
-
-        // Animate up
-        await animateScroll(startY, targetY);
-
-        // Pause
-        await sleep(pageDelay);
-        await captureFrame(pageDelay);
-
-        // Update progress (50-100%)
-        const progress = 50 + (((totalPages - 1) - page) / totalPages) * 50;
-        try {
-          chrome.runtime.sendMessage({ type: 'CAPTURE_PROGRESS', progress }).catch(() => { });
-        } catch (e) { }
-      }
-    }
-
-    // Reset scroll and unfreeze
-    await chrome.tabs.sendMessage(tabId, { type: 'RESET_SCROLL' });
-    await chrome.tabs.sendMessage(tabId, { type: 'UNFREEZE_PAGE' });
-
-    if (captureCancelled) {
-      captureInProgress = false;
-      return;
-    }
-
-    // Use viewport width for GIF encoding (full browser window size)
-    const finalSettings = { ...settings, width: viewportWidth };
-
-    // Notify capture complete
-    try {
-      chrome.runtime.sendMessage({
-        type: 'CAPTURE_COMPLETE',
-        frames: frames,
-        settings: finalSettings
-      }).catch(() => {
-        console.warn('Popup might be closed');
-      });
-    } catch (e) {
-      console.warn('Failed to send capture complete message:', e);
-    }
+    // Wait for GIF_COMPLETE message from offscreen (handled by listener)
 
   } catch (error) {
     console.error('Capture error:', error);
-    try {
-      chrome.runtime.sendMessage({
-        type: 'ERROR',
-        error: error.message || 'An error occurred during capture'
-      }).catch(() => { });
-    } catch (e) { }
-  } finally {
-    captureInProgress = false;
+    updateState('ERROR', 0, null, error.message);
   }
 }
 
-
-
-// Utility: Sleep function
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+// Helper to send message safely (ignore if popup closed)
+function safeSendMessage(msg) {
+  chrome.runtime.sendMessage(msg).catch(() => {
+    // Ignore error if popup is closed
+  });
 }
 
+// Offscreen helper functions
+async function setupOffscreenDocument(path) {
+  const existingContexts = await chrome.runtime.getContexts({
+    contextTypes: ['OFFSCREEN_DOCUMENT']
+  });
+
+  if (existingContexts.length > 0) {
+    return;
+  }
+
+  await chrome.offscreen.createDocument({
+    url: path,
+    reasons: ['USER_MEDIA'],
+    justification: 'Recording tab video for GIF creation'
+  });
+}
+
+async function closeOffscreenDocument() {
+  await chrome.offscreen.closeDocument();
+}
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}

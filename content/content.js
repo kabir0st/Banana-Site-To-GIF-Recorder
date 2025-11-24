@@ -1,146 +1,68 @@
-// Content script for scrolling and page measurement
+// Content script for scrolling
 
-// Get page height
-function getPageHeight() {
-  return Math.max(
-    document.body.scrollHeight,
-    document.documentElement.scrollHeight,
-    document.body.offsetHeight,
-    document.documentElement.offsetHeight,
-    document.body.clientHeight,
-    document.documentElement.clientHeight
-  );
-}
+const SCROLL_DELAY = 800;    // delay between pages
+const SCROLL_DURATION = 600; // animation time
 
-// Get viewport height
-function getViewportHeight() {
-  return window.innerHeight;
-}
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'START_AUTO_SCROLL') {
+    startAutoScroll();
+    sendResponse({ success: true });
+  }
+  return true;
+});
 
-// Get viewport width
-function getViewportWidth() {
-  return window.innerWidth;
-}
+function startAutoScroll() {
+  const pages = Math.ceil(document.body.scrollHeight / window.innerHeight);
+  let page = 0;
+  let direction = 1;
+  let stopped = false;
 
-// Scroll to position (instant)
-function scrollToPosition(position) {
-  window.scrollTo({
-    top: position,
-    behavior: 'instant'
-  });
-}
-
-// Smooth scroll to position using requestAnimationFrame
-function smoothScrollTo(target, duration, callback) {
-  return new Promise((resolve) => {
+  function smoothScrollTo(target) {
     target = Math.round(target);
-    const start = Math.round(window.pageYOffset || document.documentElement.scrollTop);
+    const start = Math.round(window.scrollY);
     const change = target - start;
     const startTime = performance.now();
 
     function animate(time) {
-      const elapsed = time - startTime;
-      const t = Math.min(elapsed / duration, 1);
-      
-      // Ease out quad: t * (2 - t)
-      const ease = t * (2 - t);
-      
-      const currentPos = Math.round(start + change * ease);
-      window.scrollTo(0, currentPos);
+      const t = Math.min((time - startTime) / SCROLL_DURATION, 1);
+      const ease = t * (2 - t); // no bounce
+
+      window.scrollTo(0, start + change * ease);
 
       if (t < 1) {
         requestAnimationFrame(animate);
       } else {
-        // Ensure we land exactly on target
         window.scrollTo(0, target);
-        if (callback) callback();
-        resolve();
       }
     }
 
     requestAnimationFrame(animate);
-  });
-}
-
-// Get current scroll position
-function getCurrentScrollPosition() {
-  return window.pageYOffset || document.documentElement.scrollTop;
-}
-
-// Freeze page (disable animations, etc.)
-function freezePage() {
-  document.body.style.overflow = 'hidden';
-  // Stop animations
-  const style = document.createElement('style');
-  style.id = 'scrollgif-freeze';
-  style.textContent = `
-    *, *::before, *::after {
-      animation-play-state: paused !important;
-      transition: none !important;
-    }
-  `;
-  document.head.appendChild(style);
-}
-
-// Unfreeze page
-function unfreezePage() {
-  document.body.style.overflow = '';
-  const style = document.getElementById('scrollgif-freeze');
-  if (style) {
-    style.remove();
   }
-}
 
-// Wait for page to be ready
-function waitForPageReady() {
-  return new Promise((resolve) => {
-    if (document.readyState === 'complete') {
-      resolve();
-    } else {
-      window.addEventListener('load', resolve, { once: true });
+  function nextPage() {
+    if (stopped) return;
+
+    page += direction;
+    smoothScrollTo(page * window.innerHeight);
+
+    // if reached bottom, reverse direction
+    if (page === pages - 1) direction = -1;
+
+    // if returned to top, stop entirely
+    if (page === 0 && direction === -1) {
+      stopped = true;
+      // Notify background
+      setTimeout(() => {
+        chrome.runtime.sendMessage({ type: 'SCROLL_COMPLETE' });
+      }, 500); // Small buffer after last scroll
+      return;
     }
-  });
-}
 
-// Get page info
-function getPageInfo() {
-  return {
-    height: getPageHeight(),
-    viewportHeight: getViewportHeight(),
-    viewportWidth: getViewportWidth(),
-    currentScroll: getCurrentScrollPosition()
-  };
-}
-
-// Listen for messages from background script
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'GET_PAGE_INFO') {
-    const info = getPageInfo();
-    sendResponse(info);
-  } else if (message.type === 'SCROLL_TO') {
-    scrollToPosition(message.position);
-    sendResponse({ success: true });
-  } else if (message.type === 'SMOOTH_SCROLL_TO') {
-    smoothScrollTo(message.position, message.duration || 600).then(() => {
-      sendResponse({ success: true });
-    });
-    return true; // Keep channel open for async response
-  } else if (message.type === 'FREEZE_PAGE') {
-    freezePage();
-    sendResponse({ success: true });
-  } else if (message.type === 'UNFREEZE_PAGE') {
-    unfreezePage();
-    sendResponse({ success: true });
-  } else if (message.type === 'RESET_SCROLL') {
-    scrollToPosition(0);
-    sendResponse({ success: true });
+    setTimeout(nextPage, SCROLL_DURATION + SCROLL_DELAY);
   }
-  
-  return true; // Keep channel open for async response
-});
 
-// Initialize
-waitForPageReady().then(() => {
-  // Page is ready
-});
-
+  // Start
+  // Initial scroll to top just in case
+  window.scrollTo(0, 0);
+  setTimeout(nextPage, 1000); // Wait a sec before starting
+}

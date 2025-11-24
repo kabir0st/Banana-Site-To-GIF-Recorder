@@ -1,435 +1,216 @@
 // State management
 const STATE = {
-  IDLE: 'idle',
-  CAPTURING: 'capturing',
-  PROCESSING: 'processing',
-  COMPLETE: 'complete',
-  ERROR: 'error'
-};
-
-let currentState = STATE.IDLE;
-let capturedFrames = [];
-let currentGifBlob = null;
-
-// Default settings
-const DEFAULT_SETTINGS = {
-  scrollDelay: 500,
-  frameDelay: 16, // Default to 60fps
-  quality: 5,
-  width: null, // Default to full width (null)
-  overlap: 50
+  IDLE: 'IDLE',
+  CAPTURING: 'CAPTURING',
+  PROCESSING: 'PROCESSING',
+  COMPLETE: 'COMPLETE',
+  ERROR: 'ERROR'
 };
 
 // DOM elements
 const elements = {
+  startView: document.getElementById('start-view'),
+  resultView: document.getElementById('result-view'),
+
   status: document.getElementById('status'),
+  progressContainer: document.getElementById('progress-container'),
   progressBar: document.getElementById('progressBar'),
   progressText: document.getElementById('progressText'),
+
   startBtn: document.getElementById('startBtn'),
   cancelBtn: document.getElementById('cancelBtn'),
-  downloadBtn: document.getElementById('downloadBtn'),
-  resetBtn: document.getElementById('resetBtn'),
-  previewArea: document.getElementById('previewArea'),
+
   previewGif: document.getElementById('previewGif'),
-  settingsPanel: document.getElementById('settingsPanel'),
-  settingsToggle: document.getElementById('settingsToggle'),
-  actionsSection: document.getElementById('actionsSection'),
-  scrollSpeed: document.getElementById('scrollSpeed'),
-  scrollSpeedValue: document.getElementById('scrollSpeedValue'),
-  frameDelay: document.getElementById('frameDelay'),
-  frameDelayValue: document.getElementById('frameDelayValue'),
-  gifQuality: document.getElementById('gifQuality'),
-  gifWidth: document.getElementById('gifWidth'),
-  overlap: document.getElementById('overlap'),
-  overlapValue: document.getElementById('overlapValue')
+  fileInfo: document.getElementById('fileInfo'),
+  downloadBtn: document.getElementById('downloadBtn'),
+  resetBtn: document.getElementById('resetBtn')
 };
 
-// Initialize
+let currentGifBlob = null;
+
 async function init() {
-  await loadSettings();
   setupEventListeners();
-  updateUI();
+
+  // Restore state
+  const state = await chrome.runtime.sendMessage({ type: 'GET_STATUS' });
+  handleStateUpdate(state);
 }
 
-// Load settings from storage
-async function loadSettings() {
-  try {
-    const result = await chrome.storage.sync.get(DEFAULT_SETTINGS);
-    const settings = { ...DEFAULT_SETTINGS, ...result };
-
-    elements.scrollSpeed.value = settings.scrollDelay;
-    elements.frameDelay.value = settings.frameDelay;
-    elements.gifQuality.value = settings.quality;
-    elements.gifWidth.value = settings.width;
-    elements.overlap.value = settings.overlap;
-
-    updateSettingLabels();
-  } catch (error) {
-    console.error('Error loading settings:', error);
-  }
-}
-
-// Save settings to storage
-async function saveSettings() {
-  const settings = {
-    scrollDelay: parseInt(elements.scrollSpeed.value),
-    frameDelay: parseInt(elements.frameDelay.value),
-    quality: parseInt(elements.gifQuality.value),
-    width: parseInt(elements.gifWidth.value),
-    overlap: parseInt(elements.overlap.value)
-  };
-
-  try {
-    await chrome.storage.sync.set(settings);
-  } catch (error) {
-    console.error('Error saving settings:', error);
-  }
-}
-
-// Setup event listeners
 function setupEventListeners() {
   elements.startBtn.addEventListener('click', startCapture);
   elements.cancelBtn.addEventListener('click', cancelCapture);
   elements.downloadBtn.addEventListener('click', downloadGif);
   elements.resetBtn.addEventListener('click', reset);
-  elements.settingsToggle.addEventListener('click', toggleSettings);
 
-  // Settings change listeners
-  elements.scrollSpeed.addEventListener('input', () => {
-    updateScrollSpeedLabel();
-    saveSettings();
-  });
-
-  elements.frameDelay.addEventListener('input', () => {
-    updateFrameDelayLabel();
-    saveSettings();
-  });
-
-  elements.gifQuality.addEventListener('change', saveSettings);
-  elements.gifWidth.addEventListener('change', saveSettings);
-  elements.overlap.addEventListener('input', () => {
-    updateOverlapLabel();
-    saveSettings();
-  });
-
-  // Listen for messages from background script
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === 'CAPTURE_PROGRESS') {
-      updateProgress(message.progress);
-    } else if (message.type === 'CAPTURE_COMPLETE') {
-      handleCaptureComplete(message.frames, message.settings);
-    } else if (message.type === 'GIF_PROGRESS') {
-      updateProgress(message.progress);
-    } else if (message.type === 'GIF_COMPLETE') {
-      handleGifComplete(message.blobUrl);
-    } else if (message.type === 'ERROR') {
-      handleError(message.error);
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === 'STATE_UPDATE') {
+      handleStateUpdate(message.state);
     }
   });
 }
 
-// Update setting labels
-function updateSettingLabels() {
-  updateScrollSpeedLabel();
-  updateFrameDelayLabel();
-  updateOverlapLabel();
-}
+async function handleStateUpdate(state) {
+  updateUI(state);
 
-function updateScrollSpeedLabel() {
-  const value = parseInt(elements.scrollSpeed.value);
-  if (value <= 300) {
-    elements.scrollSpeedValue.textContent = 'Fast';
-  } else if (value <= 700) {
-    elements.scrollSpeedValue.textContent = 'Medium';
-  } else {
-    elements.scrollSpeedValue.textContent = 'Slow';
+  if (state.status === STATE.PROCESSING || state.status === STATE.CAPTURING) {
+    updateProgress(state.progress);
+  }
+
+  if (state.status === STATE.COMPLETE) {
+    if (state.blobUrl === 'STORAGE') {
+      console.log('Popup: Retrieving GIF from storage...');
+      try {
+        const result = await chrome.storage.local.get('gifData');
+        if (result.gifData) {
+          console.log('Popup: GIF retrieved from storage.');
+          currentGifBlob = result.gifData;
+          showPreview(currentGifBlob);
+        } else {
+          console.error('Popup: GIF data missing from storage');
+          elements.status.textContent = 'Error: GIF data missing';
+        }
+      } catch (e) {
+        console.error('Popup: Storage error:', e);
+        elements.status.textContent = 'Error reading storage: ' + e.message;
+      }
+    } else if (state.blobUrl) {
+      currentGifBlob = state.blobUrl;
+      showPreview(currentGifBlob);
+    }
+  }
+
+  if (state.status === STATE.ERROR) {
+    elements.status.textContent = `Error: ${state.error}`;
   }
 }
 
-function updateFrameDelayLabel() {
-  elements.frameDelayValue.textContent = `${elements.frameDelay.value}ms`;
-}
+function updateUI(state) {
+  const { status, progress, blobUrl, error } = state;
 
-function updateOverlapLabel() {
-  elements.overlapValue.textContent = `${elements.overlap.value}px`;
-}
+  // Default visibility
+  elements.startView.classList.remove('hidden');
+  elements.resultView.classList.add('hidden');
+  elements.progressContainer.classList.add('hidden');
+  elements.startBtn.classList.remove('hidden');
+  elements.cancelBtn.classList.add('hidden');
 
-// Toggle settings panel
-function toggleSettings() {
-  const isVisible = elements.settingsPanel.style.display !== 'none';
-  elements.settingsPanel.style.display = isVisible ? 'none' : 'block';
-}
-
-// Update UI based on state
-function updateUI() {
-  switch (currentState) {
+  switch (status) {
     case STATE.IDLE:
-      elements.status.textContent = 'Ready';
-      elements.status.className = 'status';
-      elements.startBtn.disabled = false;
-      elements.startBtn.style.display = 'block';
-      elements.cancelBtn.style.display = 'none';
-      elements.actionsSection.style.display = 'none';
-      elements.previewArea.style.display = 'none';
+      elements.status.textContent = 'Ready to peel?';
       break;
 
     case STATE.CAPTURING:
       elements.status.textContent = 'Capturing...';
-      elements.status.className = 'status capturing';
-      elements.startBtn.disabled = true;
-      elements.cancelBtn.style.display = 'block';
+      elements.startBtn.classList.add('hidden');
+      elements.cancelBtn.classList.remove('hidden');
+      elements.progressContainer.classList.remove('hidden');
+      updateProgress(0);
       break;
 
     case STATE.PROCESSING:
-      elements.status.textContent = 'Generating GIF...';
-      elements.status.className = 'status processing';
-      elements.startBtn.disabled = true;
-      elements.cancelBtn.style.display = 'none';
-      break;
-
-    case STATE.COMPLETE:
-      elements.status.textContent = 'Complete!';
-      elements.status.className = 'status complete';
-      elements.startBtn.style.display = 'none';
-      elements.cancelBtn.style.display = 'none';
-      elements.actionsSection.style.display = 'flex';
-      break;
-
-    case STATE.ERROR:
-      elements.status.textContent = 'Error occurred';
-      elements.status.className = 'status error';
-      elements.startBtn.disabled = false;
-      elements.cancelBtn.style.display = 'none';
+      elements.status.textContent = 'Mashing bananas... (Generating GIF)';
+      elements.startBtn.classList.add('hidden');
+      elements.progressContainer.classList.remove('hidden');
+      updateProgress(progress);
       break;
   }
 }
 
-// Update progress
 function updateProgress(percent) {
-  elements.progressBar.style.setProperty('--progress-width', `${percent}%`);
+  elements.progressBar.style.width = `${percent}%`;
   elements.progressText.textContent = `${Math.round(percent)}%`;
 }
 
-// Start capture
 async function startCapture() {
   try {
-    currentState = STATE.CAPTURING;
-    updateUI();
-    updateProgress(0);
-
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-    if (!tab || !tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
-      throw new Error('Cannot capture this page. Please navigate to a regular webpage.');
+    if (!tab || !tab.url || tab.url.startsWith('chrome')) {
+      throw new Error('Cannot capture this page.');
     }
 
     const settings = {
-      scrollDelay: parseInt(elements.scrollSpeed.value),
-      frameDelay: parseInt(elements.frameDelay.value),
-      quality: parseInt(elements.gifQuality.value),
-      width: parseInt(elements.gifWidth.value),
-      overlap: parseInt(elements.overlap.value)
+      quality: 5,
+      width: null
     };
 
-    // Send message to background script to start capture
     chrome.runtime.sendMessage({
       type: 'START_CAPTURE',
       tabId: tab.id,
       settings: settings
     });
 
+    handleStateUpdate({ status: STATE.CAPTURING, progress: 0 });
+
   } catch (error) {
-    handleError(error.message);
+    handleStateUpdate({ status: STATE.ERROR, error: error.message });
   }
 }
 
-// Cancel capture
 function cancelCapture() {
   chrome.runtime.sendMessage({ type: 'CANCEL_CAPTURE' });
   reset();
 }
 
-// Handle capture complete
-function handleCaptureComplete(frames, settings) {
-  capturedFrames = frames;
-  currentState = STATE.PROCESSING;
-  updateUI();
-  updateProgress(50);
+function showPreview(url) {
+  elements.previewGif.src = url;
+  elements.startView.classList.add('hidden');
+  elements.resultView.classList.remove('hidden');
 
-  // Use settings from message or fallback to current UI values
-  const gifSettings = settings || {
-    scrollDelay: parseInt(elements.scrollSpeed.value),
-    frameDelay: parseInt(elements.frameDelay.value),
-    quality: parseInt(elements.gifQuality.value),
-    width: parseInt(elements.gifWidth.value),
-    overlap: parseInt(elements.overlap.value)
-  };
-
-  generateGifFromFrames(frames, gifSettings);
+  // Size
+  const size = Math.round((url.length * 3) / 4);
+  elements.fileInfo.textContent = `GIF Ready! ${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// Generate GIF from frames
-function generateGifFromFrames(frameDataUrls, settings) {
-  return new Promise((resolve, reject) => {
-    try {
-      if (typeof GIF === 'undefined') {
-        // Try to load GIF.js if not available
-        const script = document.createElement('script');
-        script.src = chrome.runtime.getURL('lib/gif.js');
-        script.onload = () => {
-          if (typeof GIF === 'undefined') {
-            reject(new Error('GIF.js library failed to load'));
-            return;
-          }
-          continueGifGeneration(frameDataUrls, settings, resolve, reject);
-        };
-        script.onerror = () => {
-          reject(new Error('Failed to load GIF.js library'));
-        };
-        document.head.appendChild(script);
-        return;
-      }
-
-      continueGifGeneration(frameDataUrls, settings, resolve, reject);
-    } catch (error) {
-      console.error('GIF generation error:', error);
-      handleError(error.message || 'Failed to generate GIF');
-      reject(error);
-    }
-  });
-}
-
-// Continue GIF generation (helper function)
-function continueGifGeneration(frameDataUrls, settings, resolve, reject) {
-  try {
-    const gif = new GIF({
-      workers: 2,
-      quality: settings.quality,
-      width: settings.width,
-      workerScript: chrome.runtime.getURL('lib/gif.worker.js'),
-      dither: false
-    });
-
-    let loadedFrames = 0;
-    const totalFrames = frameDataUrls.length;
-
-    if (totalFrames === 0) {
-      reject(new Error('No frames to encode'));
-      return;
-    }
-
-    // Load images and add frames
-    frameDataUrls.forEach((frame) => {
-      const img = new Image();
-      img.onload = () => {
-        // Use frame-specific delay if available, otherwise use settings
-        const delay = frame.delay || settings.frameDelay;
-        gif.addFrame(img, { delay: delay });
-        loadedFrames++;
-
-        // Update progress (50-100% for encoding)
-        const progress = 50 + (loadedFrames / totalFrames) * 50;
-        updateProgress(progress);
-
-        if (loadedFrames === totalFrames) {
-          gif.on('finished', function (blob) {
-            const blobUrl = URL.createObjectURL(blob);
-            handleGifComplete(blobUrl);
-            resolve(blobUrl);
-          });
-
-          gif.on('progress', function (p) {
-            const progress = 50 + (p * 50);
-            updateProgress(progress);
-          });
-
-          gif.render();
-        }
-      };
-
-      img.onerror = () => {
-        reject(new Error('Failed to load frame image'));
-      };
-
-      // Handle both old format (string) and new format (object)
-      img.src = typeof frame === 'string' ? frame : frame.dataUrl;
-    });
-
-  } catch (error) {
-    console.error('GIF generation error:', error);
-    handleError(error.message || 'Failed to generate GIF');
-    reject(error);
+function downloadGif() {
+  if (!currentGifBlob) {
+    console.error('Popup: No GIF to download');
+    return;
   }
 
-}
+  console.log('Popup: Starting download...');
 
-// Handle GIF complete
-function handleGifComplete(blobUrl) {
-  currentGifBlob = blobUrl;
-  currentState = STATE.COMPLETE;
-  updateUI();
-  updateProgress(100);
+  try {
+    // Convert Base64 to Blob for better download handling
+    const base64Data = currentGifBlob.split(',')[1];
+    const blob = base64ToBlob(base64Data, 'image/gif');
+    const url = URL.createObjectURL(blob);
 
-  // Show preview
-  elements.previewGif.src = blobUrl;
-  elements.previewArea.style.display = 'block';
-}
+    const now = new Date();
+    const filename = `banana_gif_${now.getTime()}.gif`;
 
-// Handle error
-function handleError(errorMessage) {
-  currentState = STATE.ERROR;
-  elements.status.textContent = `Error: ${errorMessage}`;
-  updateUI();
-}
-
-// Download GIF
-function downloadGif() {
-  if (!currentGifBlob) return;
-
-  const filename = generateFilename();
-
-  // Convert blob URL to blob and download
-  fetch(currentGifBlob)
-    .then(response => response.blob())
-    .then(blob => {
-      const url = URL.createObjectURL(blob);
-      chrome.downloads.download({
-        url: url,
-        filename: filename,
-        saveAs: true
-      }, (downloadId) => {
-        if (chrome.runtime.lastError) {
-          console.error('Download failed:', chrome.runtime.lastError);
-          handleError('Download failed: ' + chrome.runtime.lastError.message);
-        } else {
-          console.log('Download started:', downloadId);
-        }
-      });
-    })
-    .catch(error => {
-      console.error('Download error:', error);
-      handleError('Failed to download GIF');
+    chrome.downloads.download({
+      url: url,
+      filename: filename,
+      saveAs: true
+    }, (downloadId) => {
+      if (chrome.runtime.lastError) {
+        console.error('Popup: Download failed:', chrome.runtime.lastError);
+        elements.status.textContent = 'Download failed: ' + chrome.runtime.lastError.message;
+      } else {
+        console.log('Popup: Download started, ID:', downloadId);
+      }
     });
+  } catch (e) {
+    console.error('Popup: Error preparing download:', e);
+    elements.status.textContent = 'Download error: ' + e.message;
+  }
 }
 
-// Generate filename
-function generateFilename() {
-  const now = new Date();
-  const dateStr = now.toISOString().split('T')[0];
-  const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
-  return `scrollgif_${dateStr}_${timeStr}.gif`;
+function base64ToBlob(base64, type) {
+  const binStr = atob(base64);
+  const len = binStr.length;
+  const arr = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    arr[i] = binStr.charCodeAt(i);
+  }
+  return new Blob([arr], { type: type });
 }
 
-// Reset
 function reset() {
-  currentState = STATE.IDLE;
-  capturedFrames = [];
+  chrome.runtime.sendMessage({ type: 'CANCEL_CAPTURE' });
   currentGifBlob = null;
-  updateProgress(0);
-  updateUI();
+  elements.previewGif.src = '';
+  handleStateUpdate({ status: STATE.IDLE });
 }
 
-
-// Initialize on load
 init();
-

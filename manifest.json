@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "ScrollGif - Scrolling Website GIF Creator",
+  "name": "BlueBerry Gif Maker",
   "version": "1.0.0",
   "description": "Create animated GIFs of entire webpages with automatic scrolling",
   "permissions": [
@@ -8,7 +8,10 @@
     "tabs",
     "scripting",
     "storage",
-    "downloads"
+    "downloads",
+    "tabCapture",
+    "offscreen",
+    "unlimitedStorage"
   ],
   "host_permissions": [
     "<all_urls>"

@@ -1,79 +1,60 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ScrollGif</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <div class="container">
-    <header>
-      <h1>ScrollGif</h1>
-      <button id="settingsToggle" class="icon-btn" title="Settings">⚙️</button>
-    </header>
-
-    <div class="status-section">
-      <div id="status" class="status">Ready</div>
-      <div class="progress-container">
-        <div id="progressBar" class="progress-bar"></div>
-        <span id="progressText" class="progress-text">0%</span>
+    <div class="header">
+      <div class="logo">
+        <span>🍌</span>
+        <h1>Banana Gif</h1>
       </div>
     </div>
 
-    <div id="previewArea" class="preview-area" style="display: none;">
-      <img id="previewGif" src="" alt="GIF Preview">
-    </div>
-
-    <div class="controls">
-      <button id="startBtn" class="btn btn-primary">Start Capture</button>
-      <button id="cancelBtn" class="btn btn-secondary" style="display: none;">Cancel</button>
-    </div>
-
-    <div id="settingsPanel" class="settings-panel" style="display: none;">
-      <h3>Settings</h3>
+    <!-- Phase 1: Start / Recording -->
+    <div id="start-view" class="view">
+      <div class="illustration">🍌</div>
       
-      <div class="setting-item">
-        <label for="scrollSpeed">Scroll Speed:</label>
-        <input type="range" id="scrollSpeed" min="200" max="1000" value="500" step="100">
-        <span id="scrollSpeedValue">Medium</span>
+      <div id="status-area">
+        <p id="status" class="status-text">Ready to peel?</p>
+        
+        <div id="progress-container" class="progress-container hidden">
+          <div class="progress-bar">
+            <div id="progressBar" class="progress-fill"></div>
+          </div>
+          <span id="progressText" class="progress-text">0%</span>
+        </div>
       </div>
 
-      <div class="setting-item">
-        <label for="frameDelay">Frame Delay (ms):</label>
-        <input type="range" id="frameDelay" min="100" max="2000" value="500" step="100">
-        <span id="frameDelayValue">500ms</span>
-      </div>
-
-      <div class="setting-item">
-        <label for="gifQuality">GIF Quality:</label>
-        <select id="gifQuality">
-          <option value="1">High</option>
-          <option value="5" selected>Medium</option>
-          <option value="10">Low</option>
-        </select>
-      </div>
-
-      <div class="setting-item">
-        <label for="gifWidth">Width (px):</label>
-        <input type="number" id="gifWidth" min="200" max="1920" value="800" step="50">
-      </div>
-
-      <div class="setting-item">
-        <label for="overlap">Overlap (px):</label>
-        <input type="range" id="overlap" min="0" max="200" value="50" step="10">
-        <span id="overlapValue">50px</span>
-      </div>
+      <button id="startBtn" class="btn btn-primary">
+        <span>📹</span> Start Recording
+      </button>
+      
+      <button id="cancelBtn" class="btn btn-secondary hidden">
+        Stop
+      </button>
     </div>
 
-    <div class="actions" id="actionsSection" style="display: none;">
-      <button id="downloadBtn" class="btn btn-primary">Download GIF</button>
-      <button id="resetBtn" class="btn btn-secondary">Reset</button>
+    <!-- Phase 2: Result -->
+    <div id="result-view" class="view hidden">
+      <div class="preview-container">
+        <img id="previewGif" src="" alt="Recorded GIF">
+      </div>
+      
+      <div id="fileInfo" class="file-info">GIF Ready!</div>
+
+      <button id="downloadBtn" class="btn btn-primary">
+        <span>⬇️</span> Download GIF
+      </button>
+      
+      <button id="resetBtn" class="btn btn-text">
+        Back to Start
+      </button>
     </div>
+
   </div>
-
-  <script src="../lib/gif.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
-
