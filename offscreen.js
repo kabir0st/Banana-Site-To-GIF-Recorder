@@ -24,12 +24,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function startRecording(streamId, settings) {
     if (isRecording) return;
 
+    const dpr = settings.devicePixelRatio || 1;
+    const targetWidth = (settings.viewportWidth || 1920) * dpr;
+    const targetHeight = (settings.viewportHeight || 1080) * dpr;
+
     const media = await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: {
             mandatory: {
                 chromeMediaSource: 'tab',
-                chromeMediaSourceId: streamId
+                chromeMediaSourceId: streamId,
+                maxWidth: targetWidth,
+                maxHeight: targetHeight,
+                minWidth: targetWidth,
+                minHeight: targetHeight
             }
         }
     });
@@ -76,7 +84,7 @@ async function startRecording(streamId, settings) {
     const interval = 1000 / FPS;
 
     // Calculate source dimensions (accounting for devicePixelRatio)
-    const dpr = settings.devicePixelRatio || 1;
+    // dpr is already defined at the top of the function
     const sourceWidth = viewportWidth * dpr;
     const sourceHeight = viewportHeight * dpr;
 
@@ -87,10 +95,15 @@ async function startRecording(streamId, settings) {
             return;
         }
 
+        // Calculate crop position (center if video is larger than source)
+        // This handles potential letterboxing by the browser
+        const sourceX = Math.max(0, (video.videoWidth - sourceWidth) / 2);
+        const sourceY = Math.max(0, (video.videoHeight - sourceHeight) / 2);
+
         // Draw cropped video frame with scaling
         // source x, y, w, h -> dest x, y, w, h
         // We crop the source to the viewport * dpr, and draw it to the output canvas (downscaled)
-        ctx.drawImage(video, 0, 0, sourceWidth, sourceHeight, 0, 0, outputWidth, outputHeight);
+        ctx.drawImage(video, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, outputWidth, outputHeight);
         const frameData = ctx.getImageData(0, 0, outputWidth, outputHeight);
         capturedFrames.push(frameData);
 
