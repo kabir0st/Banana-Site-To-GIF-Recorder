@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "BlueBerry Gif Maker",
+  "name": "Banana Gif Recorder",
   "version": "1.0.0",
-  "description": "Create animated GIFs of entire webpages with automatic scrolling",
+  "description": "Record smooth, banana-themed GIFs of your tabs.",
   "permissions": [
     "activeTab",
     "tabs",
