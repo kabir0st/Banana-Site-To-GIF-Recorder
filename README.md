@@ -2,8 +2,6 @@
 
 [![Chrome Extension](https://img.shields.io/badge/Chrome%20Extension-Manual%20Install-4285f4?logo=google-chrome&logoColor=white)](#setup)
 [![Made with JavaScript](https://img.shields.io/badge/Made%20with-JavaScript-f7df1e?logo=javascript&logoColor=000)](#features)
-[![License: ISC](https://img.shields.io/badge/License-ISC-lightgrey.svg)](./package.json)
-[![GitHub](https://img.shields.io/badge/GitHub-kabir0st%2Fbanana--gif--recorder-000?logo=github)](https://github.com/kabir0st/banana-gif-recorder)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-kabir0st-ffdd00?logo=buy-me-a-coffee&logoColor=000)](https://www.buymeacoffee.com/kabir0st)
 
 Banana Gif Recorder is a tiny, banana-yellow Chrome extension that captures entire web pages in smooth, shareable GIFs. Perfect for creating portfolio showcases, sharing UI designs, and demonstrating full-page interactions—all processed locally on your machine.
@@ -12,26 +10,28 @@ Banana Gif Recorder is a tiny, banana-yellow Chrome extension that captures enti
 
 ### Main Interface
 ![Main page - Start recording interface](images/main_page.png)
-*The clean, banana-themed popup interface where you start your recording session.*
+
+*Interface where you start your recording session.*
 
 ### Capturing Process
 ![Capturing - Recording in progress](images/capturing.png)
-*Watch as the extension smoothly scrolls through your page, capturing every section in real-time.*
+
+*Watch as the extension scrolls through your page, capturing every section.*
 
 ### Rendering Frames
 ![Rendering - Processing frames into GIF](images/rendering.png)
-*The extension processes all captured frames and stitches them together into a smooth GIF animation.*
+
+*The extension processes all captured frames and stitches them together into GIF animation.*
 
 ### Download Ready
 ![Download - GIF ready to save](images/download_gif.png)
-*Your final GIF is ready! Download and share your smooth, full-page capture anywhere.*
+*Your final GIF is ready! Download and share, full-page capture anywhere.*
 
 ## Features
 - **Full-Page Capture**: Automatically scrolls and captures entire web pages in one smooth recording.
 - **Buttery-Smooth GIFs**: High-FPS frame capture ensures your portfolio showcases and UI designs look professional.
 - **Perfect for Showcases**: Create stunning GIFs of your projects, designs, or any web page to share in portfolios, presentations, or documentation.
 - **Local Privacy**: Recording, rendering, and downloads happen entirely in your browser—your content never leaves your machine.
-- **Progress Tracking**: Live indicators show capture and rendering progress so you always know what's happening.
 
 ## Setup
 1. Clone the repo: `git clone https://github.com/kabir0st/banana-gif-recorder.git`.
