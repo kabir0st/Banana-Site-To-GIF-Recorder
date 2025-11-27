@@ -234,7 +234,7 @@ body {
   text-align: center;
 }
 
-/* Footer & BMC Button */
+/* Footer & Portfolio Button */
 .footer {
   margin-top: auto;
   display: flex;
@@ -242,28 +242,28 @@ body {
   padding-top: 10px;
 }
 
-.bmc-button {
+.portfolio-button {
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: #FFDD00;
-  color: #000000;
+  background: linear-gradient(135deg, var(--banana-yellow) 0%, var(--banana-dark) 100%);
+  color: var(--banana-text);
   text-decoration: none;
   padding: 8px 16px;
   border-radius: 50px;
-  font-family: 'Cookie', cursive, sans-serif; /* Fallback */
+  font-family: inherit;
   font-weight: 600;
   font-size: 14px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  transition: transform 0.2s ease;
+  box-shadow: 0 4px 12px var(--banana-shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.bmc-button:hover {
+.portfolio-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+  box-shadow: 0 6px 16px var(--banana-shadow);
 }
 
-.bmc-emoji {
+.portfolio-emoji {
   font-size: 18px;
 }
 
