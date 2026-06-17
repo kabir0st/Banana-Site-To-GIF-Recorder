@@ -110,8 +110,8 @@ If you have questions about this privacy policy, please open an issue on the pro
 repository or contact the developer:
 
 - **Developer:** Kabir S. Tamari
-- **Email:** lurayy36@gmail.com
-- **Repository:** https://github.com/kabir0st/banana-gif-recorder
+- **Email:** kabirtamari@gmail.com
+- **Repository:** https://github.com/kabir0st/Banana-Site-To-GIF-Recorder
 
 ---
 
