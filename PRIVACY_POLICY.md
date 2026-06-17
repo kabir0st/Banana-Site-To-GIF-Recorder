@@ -1,4 +1,4 @@
-# Privacy Policy — Banana Gif Recorder
+# Privacy Policy for Banana Gif Recorder
 
 **Effective date:** June 17, 2026
 **Last updated:** June 17, 2026
@@ -22,8 +22,8 @@ does **not**:
 - Collect personally identifiable information (name, email, address, etc.).
 - Track your browsing history, search history, or activity.
 - Use analytics, telemetry, cookies, advertising identifiers, or fingerprinting.
-- Send any data to the developer or to any third‑party server.
-- Include any third‑party tracking or advertising libraries.
+- Send any data to the developer or to any third-party server.
+- Include any third-party tracking or advertising libraries.
 
 The page content captured during a recording is processed **entirely on your device**
 and is never uploaded anywhere.
@@ -57,17 +57,17 @@ them are used to collect or share your data.
 |---|---|
 | `activeTab` / `tabs` | Identify the tab you want to record when you open the popup. |
 | `tabCapture` | Capture the visual frames of the current tab for the GIF. |
-| `scripting` | Inject a small content script that smooth‑scrolls the page so the whole page can be captured. |
-| `offscreen` | Run the GIF‑encoding work in a background offscreen document. |
+| `scripting` | Inject a small content script that smooth-scrolls the page so the whole page can be captured. |
+| `offscreen` | Run the GIF-encoding work in a background offscreen document. |
 | `storage` / `unlimitedStorage` | Temporarily hold the generated GIF locally so it can be previewed and downloaded (GIFs can be large). |
 | `downloads` | Let you save the finished GIF to your computer. |
-| `host_permissions` (`<all_urls>`) | Allow you to record whichever website you choose. Access is only ever used on the tab you actively record — no browsing data is read or stored. |
+| `host_permissions` (`<all_urls>`) | Allow you to record whichever website you choose. Access is only ever used on the tab you actively record; no browsing data is read or stored. |
 
 ---
 
 ## 4. Data sharing and selling
 
-We do not share, sell, rent, or trade any data — because we do not collect any. No data
+We do not share, sell, rent, or trade any data, because we do not collect any. No data
 ever leaves your device through the Extension.
 
 ---
@@ -88,9 +88,9 @@ from anyone, including children under 13.
 
 ---
 
-## 7. Third‑party services
+## 7. Third-party services
 
-The Extension does not integrate any third‑party analytics, advertising, or data
+The Extension does not integrate any third-party analytics, advertising, or data
 services. The only external link in the interface is an optional link to the developer’s
 personal portfolio website, which you may choose to click; the Extension itself sends no
 data to it.

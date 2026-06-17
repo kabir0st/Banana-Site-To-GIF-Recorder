@@ -1,5 +1,5 @@
 /* ============================================================
-   Banana Gif Recorder — "Modern iTunes" theme
+   Banana Gif Recorder - "Modern iTunes" theme
    Brushed-metal chrome · glossy LCD display · Aqua gel buttons
    ============================================================ */
 
@@ -137,7 +137,7 @@ body {
   transform-origin: center center;
 }
 
-/* Spinning "vinyl" disc — visible only while recording */
+/* Spinning "vinyl" disc - visible only while recording */
 .disc {
   position: absolute;
   inset: 0;
@@ -170,7 +170,7 @@ body {
 
 @keyframes disc-spin { to { transform: rotate(360deg); } }
 
-/* Pulsing REC indicator — visible only while recording */
+/* Pulsing REC indicator - visible only while recording */
 .rec-dot {
   display: none;
   width: 8px;
@@ -233,7 +233,7 @@ body {
   text-overflow: ellipsis;
 }
 
-/* scrubber / progress — hidden until busy, but reserves space */
+/* scrubber / progress - hidden until busy, but reserves space */
 .scrubber {
   display: flex;
   align-items: center;
