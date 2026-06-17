@@ -6,75 +6,78 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <div class="logo">
-        <img src="../icons/icon48.png" alt="Logo">
-        <h1>Banana Gif</h1>
+  <div class="window">
+
+    <!-- Title bar (brushed metal) -->
+    <div class="titlebar">
+      <div class="traffic-lights">
+        <span class="dot dot-red"></span>
+        <span class="dot dot-yellow"></span>
+        <span class="dot dot-green"></span>
+      </div>
+      <div class="titlebar-title">Banana&nbsp;Gif&nbsp;Recorder</div>
+    </div>
+
+    <!-- iTunes-style status display / LCD -->
+    <div class="display" id="display">
+      <div class="display-art">
+        <div class="disc"></div>
+        <img class="illustration" src="../icons/banana.svg" alt="Banana">
+      </div>
+      <div class="display-info">
+        <div class="display-status"><span class="rec-dot"></span><span id="status">Ready to peel?</span></div>
+        <div class="display-sub" id="displaySub">Banana Gif Recorder</div>
+        <div class="scrubber">
+          <div class="scrubber-track">
+            <div class="scrubber-fill" id="progressFill"></div>
+          </div>
+          <div class="scrubber-time" id="progressPercent">0%</div>
+        </div>
       </div>
     </div>
 
-    <!-- Phase 1: Start / Recording -->
-    <div id="startView" class="view">
-      <img class="illustration" src="../icons/icon128.png" alt="Banana">
-      
-      <div id="status-area">
-        <p id="status" class="status-text">Ready to peel?</p>
-        
-        <div class="progress-container hidden" id="progressContainer">
-          <!-- Progress will be shown in the button now -->
-        </div>
-      </div>
+    <!-- Body -->
+    <div class="body">
 
-      <div class="settings-area">
-        <div class="setting-item">
-          <label class="setting-label">FPS</label>
-          <div class="button-group" id="fpsGroup">
-            <button class="group-btn active" data-value="24">24</button>
-            <button class="group-btn" data-value="60">60</button>
+      <!-- Phase 1: Start / Recording -->
+      <div id="startView" class="view">
+        <div class="controls">
+          <div class="control-row">
+            <span class="control-label">FPS</span>
+            <div class="segmented" id="fpsGroup">
+              <button class="seg-btn active" data-value="24">24</button>
+              <button class="seg-btn" data-value="60">60</button>
+            </div>
+          </div>
+          <div class="control-row">
+            <span class="control-label">Quality</span>
+            <div class="segmented" id="qualityGroup">
+              <button class="seg-btn" data-value="low">Low</button>
+              <button class="seg-btn active" data-value="normal">Medium</button>
+              <button class="seg-btn" data-value="high">High</button>
+            </div>
           </div>
         </div>
-        <div class="setting-item">
-          <label class="setting-label">Quality</label>
-          <div class="button-group" id="qualityGroup">
-            <button class="group-btn" data-value="low">Low</button>
-            <button class="group-btn active" data-value="normal">Medium</button>
-            <button class="group-btn" data-value="high">High</button>
-          </div>
+
+        <button id="startBtn" class="gel gel-yellow">Start Recording</button>
+        <button id="cancelBtn" class="gel gel-red hidden">Stop</button>
+      </div>
+
+      <!-- Phase 2: Result -->
+      <div id="resultView" class="view hidden">
+        <div class="preview-container">
+          <img id="previewGif" src="" alt="Recorded GIF">
         </div>
+        <div id="fileInfo" class="file-info">GIF Ready!</div>
+        <button id="downloadBtn" class="gel gel-blue">Download GIF</button>
+        <button id="resetBtn" class="link-btn">Back to Start</button>
       </div>
 
-      <button id="startBtn" class="btn btn-primary">
-        Start Recording
-      </button>
-      
-      <button id="cancelBtn" class="btn btn-secondary hidden">
-        Stop
-      </button>
     </div>
 
-    <!-- Phase 2: Result -->
-    <div id="resultView" class="view hidden">
-      <div class="preview-container">
-        <img id="previewGif" src="" alt="Recorded GIF">
-      </div>
-      
-      <div id="fileInfo" class="file-info">GIF Ready!</div>
-
-      <button id="downloadBtn" class="btn btn-primary">
-        <span>⬇️</span> Download GIF
-      </button>
-      
-      <button id="resetBtn" class="btn btn-text">
-        Back to Start
-      </button>
-    </div>
-
+    <!-- Footer -->
     <div class="footer">
-      <a href="https://kabir0st.info/" target="_blank" class="portfolio-button">
-        <span class="portfolio-emoji">🚀</span>
-        <span class="portfolio-text">Check out my work</span>
-      </a>
+      <a href="https://kabir0st.info/" target="_blank" class="portfolio-link">Check out my work&nbsp;&rarr;</a>
     </div>
 
   </div>

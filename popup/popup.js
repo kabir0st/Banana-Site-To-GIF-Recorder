@@ -12,9 +12,10 @@ const elements = {
   startView: document.getElementById('startView'),
   resultView: document.getElementById('resultView'),
 
+  display: document.getElementById('display'),
   status: document.getElementById('status'),
-  statusText: document.getElementById('statusText'),
-  progressContainer: document.getElementById('progressContainer'),
+  displaySub: document.getElementById('displaySub'),
+  progressFill: document.getElementById('progressFill'),
   progressPercent: document.getElementById('progressPercent'),
 
   startBtn: document.getElementById('startBtn'),
@@ -23,11 +24,11 @@ const elements = {
   previewGif: document.getElementById('previewGif'),
   fileInfo: document.getElementById('fileInfo'),
   downloadBtn: document.getElementById('downloadBtn'),
-  downloadBtn: document.getElementById('downloadBtn'),
   resetBtn: document.getElementById('resetBtn'),
 
   fpsGroup: document.getElementById('fpsGroup'),
   qualityGroup: document.getElementById('qualityGroup'),
+  controls: document.querySelector('.controls'),
 
   illustration: document.querySelector('.illustration')
 };
@@ -46,14 +47,13 @@ function setupEventListeners() {
   elements.startBtn.addEventListener('click', startCapture);
   elements.cancelBtn.addEventListener('click', cancelCapture);
   elements.downloadBtn.addEventListener('click', downloadGif);
-  elements.downloadBtn.addEventListener('click', downloadGif);
   elements.resetBtn.addEventListener('click', reset);
 
-  // Button group listeners
-  document.querySelectorAll('.group-btn').forEach(btn => {
+  // Segmented control listeners
+  document.querySelectorAll('.seg-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const group = e.target.closest('.button-group');
-      group.querySelectorAll('.group-btn').forEach(b => b.classList.remove('active'));
+      const group = e.target.closest('.segmented');
+      group.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
       e.target.classList.add('active');
     });
   });
@@ -70,10 +70,8 @@ function setupEventListeners() {
 function triggerRotation(direction) {
   if (!elements.illustration) return;
 
-  // Remove any existing rotation classes
   elements.illustration.classList.remove('spinning', 'spinning-reverse');
 
-  // Add appropriate rotation class based on direction
   const rotationClass = direction === -1 ? 'spinning-reverse' : 'spinning';
   elements.illustration.classList.add(rotationClass);
 
@@ -100,11 +98,11 @@ async function handleStateUpdate(state) {
           showPreview(currentGifBlob);
         } else {
           console.error('Popup: GIF data missing from storage');
-          elements.status.textContent = 'Error: GIF data missing';
+          setDisplay('GIF data missing', 'Please try again');
         }
       } catch (e) {
         console.error('Popup: Storage error:', e);
-        elements.status.textContent = 'Error reading storage: ' + e.message;
+        setDisplay('Storage error', e.message);
       }
     } else if (state.blobUrl) {
       currentGifBlob = state.blobUrl;
@@ -113,88 +111,76 @@ async function handleStateUpdate(state) {
   }
 
   if (state.status === STATE.ERROR) {
-    elements.status.textContent = `Error: ${state.error}`;
+    setDisplay('Something slipped', state.error || 'Please try again');
   }
 }
 
 function updateUI(state) {
-  const { status, progress, blobUrl, error } = state;
+  const { status } = state;
 
-  // Reset common elements first
+  // Reset shared elements first
   elements.startView.classList.add('hidden');
   elements.resultView.classList.add('hidden');
+  elements.startBtn.classList.add('hidden');
   elements.cancelBtn.classList.add('hidden');
+  elements.display.classList.remove('busy', 'recording');
 
   switch (status) {
     case STATE.IDLE:
       elements.startView.classList.remove('hidden');
-      elements.status.textContent = 'Ready to peel?';
-      elements.startBtn.disabled = false;
-      elements.startBtn.classList.remove('btn-loading');
       elements.startBtn.classList.remove('hidden');
-      elements.startBtn.innerHTML = 'Start Recording';
+      elements.startBtn.disabled = false;
+      elements.startBtn.textContent = 'Start Recording';
+      setDisplay('Ready to peel?', 'Banana Gif Recorder');
+      setControlsDisabled(false);
+      updateProgress(0);
       break;
 
     case STATE.CAPTURING:
       elements.startView.classList.remove('hidden');
-      elements.status.textContent = 'Capturing...';
-
-      // Update button state
-      elements.startBtn.disabled = true;
-      elements.startBtn.classList.add('btn-loading');
-      elements.startBtn.classList.remove('hidden');
-      // Only update innerHTML if structure is missing to avoid flicker
-      if (!elements.startBtn.querySelector('.btn-content')) {
-        elements.startBtn.innerHTML = `
-            <div class="btn-content">
-              <span>${Math.round(progress)}%</span>
-            </div>
-          `;
-      } else {
-        // Just update text
-        const span = elements.startBtn.querySelector('span');
-        if (span) span.textContent = `${Math.round(progress)}%`;
-      }
-
       elements.cancelBtn.classList.remove('hidden');
+      elements.display.classList.add('busy', 'recording');
+      setDisplay('Capturing…', 'Scrolling through the page');
+      setControlsDisabled(true);
       break;
 
     case STATE.PROCESSING:
       elements.startView.classList.remove('hidden');
-      elements.status.textContent = 'Mashing bananas...';
-
-      // Keep button in loading state but update text
-      elements.startBtn.disabled = true;
-      elements.startBtn.classList.add('btn-loading');
-      elements.startBtn.classList.remove('hidden');
-      elements.startBtn.innerHTML = `
-        <div class="btn-content">
-          <span>Mashing...</span>
-        </div>
-      `;
+      elements.cancelBtn.classList.remove('hidden');
+      elements.display.classList.add('busy');
+      setDisplay('Mashing bananas…', 'Rendering frames');
+      setControlsDisabled(true);
       break;
 
     case STATE.COMPLETE:
       elements.resultView.classList.remove('hidden');
-      // Preview is handled in handleStateUpdate
+      // Preview + display copy handled in showPreview
       break;
 
     case STATE.ERROR:
       elements.startView.classList.remove('hidden');
-      elements.status.textContent = 'Error!';
+      elements.startBtn.classList.remove('hidden');
       elements.startBtn.disabled = false;
-      elements.startBtn.classList.remove('btn-loading');
-      elements.startBtn.innerHTML = 'Try Again';
+      elements.startBtn.textContent = 'Try Again';
+      setControlsDisabled(false);
       break;
   }
 }
 
+function setDisplay(status, sub) {
+  if (status !== undefined) elements.status.textContent = status;
+  if (sub !== undefined) elements.displaySub.textContent = sub;
+}
+
+function setControlsDisabled(disabled) {
+  document.querySelectorAll('.seg-btn').forEach(b => { b.disabled = disabled; });
+  if (elements.controls) elements.controls.classList.toggle('disabled', disabled);
+}
+
 function updateProgress(percent) {
-  // Update button text if in capturing state
-  const span = elements.startBtn.querySelector('span');
-  if (span) {
-    span.textContent = `${Math.round(percent)}%`;
-  }
+  const p = Math.max(0, Math.min(100, Math.round(percent || 0)));
+  elements.progressFill.style.width = p + '%';
+  elements.progressPercent.textContent = p + '%';
 }
 
 async function startCapture() {
@@ -233,9 +219,11 @@ function showPreview(url) {
   elements.startView.classList.add('hidden');
   elements.resultView.classList.remove('hidden');
 
-  // Size
+  // Estimate size from the base64 payload
   const size = Math.round((url.length * 3) / 4);
-  elements.fileInfo.textContent = `GIF Ready! ${(size / (1024 * 1024)).toFixed(1)} MB`;
+  const sizeMb = (size / (1024 * 1024)).toFixed(1);
+  elements.fileInfo.textContent = `GIF Ready! ${sizeMb} MB`;
+  setDisplay('GIF ready!', `${sizeMb} MB · ready to download`);
 }
 
 function downloadGif() {
@@ -262,14 +250,14 @@ function downloadGif() {
     }, (downloadId) => {
       if (chrome.runtime.lastError) {
         console.error('Popup: Download failed:', chrome.runtime.lastError);
-        elements.status.textContent = 'Download failed: ' + chrome.runtime.lastError.message;
+        setDisplay('Download failed', chrome.runtime.lastError.message);
       } else {
         console.log('Popup: Download started, ID:', downloadId);
       }
     });
   } catch (e) {
     console.error('Popup: Error preparing download:', e);
-    elements.status.textContent = 'Download error: ' + e.message;
+    setDisplay('Download error', e.message);
   }
 }
 
@@ -288,11 +276,6 @@ function reset() {
   currentGifBlob = null;
   elements.previewGif.src = '';
   updateUI({ status: STATE.IDLE });
-
-  // Reset button
-  elements.startBtn.disabled = false;
-  elements.startBtn.classList.remove('btn-loading');
-  elements.startBtn.innerHTML = 'Start Recording';
 }
 
 init();

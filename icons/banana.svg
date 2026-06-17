@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="peel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff6b0"/>
+      <stop offset="0.5" stop-color="#ffd400"/>
+      <stop offset="1" stop-color="#eda600"/>
+    </linearGradient>
+  </defs>
+  <g transform="rotate(-15 64 64)">
+    <!-- banana body (crescent) -->
+    <path d="M44 26
+             C 24 46, 24 84, 54 98
+             C 72 106, 94 100, 102 82
+             C 88 90, 66 86, 58 66
+             C 50 48, 56 38, 64 30
+             C 59 25, 49 23, 44 26 Z"
+          fill="url(#peel)" stroke="#9a6a08" stroke-width="4" stroke-linejoin="round"/>
+    <!-- belly highlight -->
+    <path d="M40 40 C 31 58, 33 80, 50 92"
+          fill="none" stroke="#fff7cc" stroke-width="5" stroke-linecap="round" opacity="0.75"/>
+    <!-- top stem -->
+    <path d="M50 28 C 52 20, 62 19, 66 26 C 62 29, 55 30, 52 33 Z"
+          fill="#6f4f18"/>
+    <!-- bottom tip -->
+    <circle cx="99" cy="84" r="5" fill="#6f4f18"/>
+  </g>
+</svg>
